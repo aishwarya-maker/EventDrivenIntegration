@@ -1,0 +1,60 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+- stage: Build
+  displayName: 'Build and Test'
+  jobs:
+  - job: BuildAndTest
+    displayName: 'Build, Test and Publish'
+    steps:
+    - task: UseDotNet@2
+      displayName: 'Install .NET 10 SDK'
+      inputs:
+        packageType: 'sdk'
+        version: '10.x'
+
+    - script: dotnet restore
+      displayName: 'Restore NuGet packages'
+
+    - script: dotnet build --configuration $(buildConfiguration) --no-restore
+      displayName: 'Build solution'
+
+    - script: dotnet test --configuration $(buildConfiguration) --no-build
+      displayName: 'Run unit tests'
+
+    - script: dotnet publish src/Producer.API -c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/producer
+      displayName: 'Publish Producer API'
+
+    - script: dotnet publish src/Consumer.API -c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/consumer
+      displayName: 'Publish Consumer API'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Upload build artifacts'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+
+- stage: Deploy
+  displayName: 'Deploy to Azure'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: DeployFunctionApp
+    displayName: 'Deploy Azure Function'
+    steps:
+    - task: AzureFunctionApp@1
+      displayName: 'Deploy Processor Function to Azure'
+      inputs:
+        azureSubscription: 'Azure subscription 1'
+        appType: 'functionApp'
+        appName: 'func-eventprocessor-dev'
+        package: '$(Build.ArtifactStagingDirectory)/**/*.zip'

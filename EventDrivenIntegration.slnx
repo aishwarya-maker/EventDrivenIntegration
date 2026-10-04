@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Consumer.API/Consumer.API.csproj" />
+    <Project Path="src/Producer.API/Producer.API.csproj" />
+  </Folder>
+  <Folder Name="/src/Processor.Function/">
+    <Project Path="src/Processor.Function/Processor_Function.csproj" />
+  </Folder>
+</Solution>
